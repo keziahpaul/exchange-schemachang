@@ -1,0 +1,14 @@
+name: Dependabot auto-merge
+run-name: Dependabot auto-merge by @${{ github.actor }} on ${{ github.event.pull_request.html_url }}
+on: pull_request_target
+permissions:
+  pull-requests: write
+  contents: write
+  repository-projects: write
+
+jobs:  
+  dependabotAutoMerge:
+    # only Dependabot PRs (prevents running on human PRs)
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    uses: PEXA-AU/pidp-workflows/.github/workflows/dependabot-auto-merge.yaml@v6
+    secrets: inherit # This will pass all repository/organisation secrets to the build workflow

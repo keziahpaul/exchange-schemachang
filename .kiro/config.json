@@ -1,0 +1,14 @@
+{
+  "dateFormat": "YYYY-MM-DD",
+  "autoExecute": "ask",
+  "initialized": true,
+  "testCommand": null,
+  "model": "claude-sonnet-4.6",
+  "jira": {
+    "project": null,
+    "enabled": false
+  },
+  "reviewers": [
+    "claude"
+  ]
+}

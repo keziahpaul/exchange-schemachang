@@ -1,0 +1,110 @@
+name: TST-Schemachange-Deploy
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+
+
+permissions:
+  id-token: write
+  contents: write
+
+
+env: 
+  TARGET_ENV: "tst"
+  ECR_REPOSITORY: pexa-one-data-snowflake-au-common-lib
+  IMAGE: 004761221582.dkr.ecr.ap-southeast-2.amazonaws.com/pexa-one-data-snowflake-au-common-lib:latest_prod
+
+
+jobs:
+  set_env_variable:
+    name: Set environment variable as outputs
+    runs-on: [non-prod, deploy]
+    outputs:
+      image: ${{ steps.setEnvVariable.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set variable as output
+        id: setEnvVariable
+        run: | 
+          echo "image=${{ env.IMAGE }}" >> $GITHUB_OUTPUT
+
+  get-jfrog-module-latest-file-name:
+    needs: [set_env_variable]
+    name: Get Common contents from snowflake common repo
+    runs-on: [non-prod,deploy]
+    outputs:
+      jfrog-modules-artifactory-name: ${{ steps.get-ref-common-repo.outputs.jfrog-modules-artifactory-name }}
+      jfrog-modules-artifactory-zip: ${{ steps.get-ref-common-repo.outputs.jfrog-modules-artifactory-zip }}
+    steps:
+      - name: Checkout actions
+        uses: actions/checkout@v7
+      
+      - name: Git clone
+        id: get-ref-common-repo
+        uses: ./.github/actions/get-common-module/
+        with:
+          checkout-branch: develop
+
+  tst-schemachange-deploy:
+    name: TST-Schemachange-Deploy
+    runs-on: [deploy]
+    environment: tst
+    needs: [get-jfrog-module-latest-file-name, set_env_variable]
+    container:
+      image: ${{ needs.set_env_variable.outputs.image }}
+    env:
+      GITHUB_ACTIONS_ID: ${{ github.run_id }}
+      SNOWFLAKE_PRIVATE_KEY_PATH: github_integration_user_private_key.p8
+      jfrog-modules-artifactory-name: ${{ needs.get-jfrog-module-latest-file-name.outputs.jfrog-modules-artifactory-name }}
+      jfrog-modules-artifactory-zip: ${{ needs.get-jfrog-module-latest-file-name.outputs.jfrog-modules-artifactory-zip }}
+
+    steps:
+      - name: Assume Role
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: ap-southeast-2
+          role-to-assume: arn:aws:iam::042775015153:role/GitHubRunnerPEXAOneDataRole
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Fetch Snowflake TST Creds
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,onedata_nonprod_${{ env.TARGET_ENV }}_exchange_snowflake-github-user-passphrase
+            SNOWFLAKE_PRIVATE_KEY,onedata_nonprod_${{ env.TARGET_ENV }}_exchange_snowflake-github-user-private-key
+
+      - name: Set up JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4.10.1
+        env:
+          JF_URL: "https://pexaartifacts.jfrog.io/"
+          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+      
+      - name: Download Schemachange common modules from jfrog
+        run: |
+          jfrog rt ping
+          jf rt download ${{ env.jfrog-modules-artifactory-name }} --include-dirs
+          ls
+
+      - name: relocate-common
+        run: |
+          unzip ${{ env.jfrog-modules-artifactory-zip }} -d downloads
+          cp -r downloads/schemachange/modules schemachange
+          ls schemachange/*
+          rm -r downloads
+      
+
+      - name: TST Dry Run
+        run: |
+          echo '${{ env.SNOWFLAKE_PRIVATE_KEY }}' >> github_integration_user_private_key.p8
+          chmod 600 github_integration_user_private_key.p8
+          make common_dry_run SF_ENV=${{ env.TARGET_ENV }}
+
+      - name: TST Deploy
+        run: |
+          make common_deploy SF_ENV=${{ env.TARGET_ENV }}

@@ -1,0 +1,46 @@
+name: Get Common contents from snowflake common repo
+description: 'clone the common repo and fetch the modules version number based on the branch checked out from '
+inputs:
+  checkout-branch:
+    description: the branch from where the artifact is read from
+    required: true
+    default: main
+  
+runs:
+  using: "composite"
+  steps:
+
+    - name: common content generator
+      id: common-content-generator
+      shell: bash
+      env:
+        checkout-branch: ${{ inputs.checkout-branch }}
+      run: |
+        git clone --branch ${{ env.checkout-branch}} git@github.com:PEXA-AU/pexa-one-data-snowflake-au-common-lib.git common-repo-clone
+        # ls common-repo-clone/*     
+        
+        jfrog_artifactory_version='common-repo-clone/version/modules-version.txt'
+        
+        jfrog_version=`cat ${jfrog_artifactory_version} `
+        if [[ ${{ env.checkout-branch}} == 'main' ]]; then
+          echo 'main'
+          jfrog_artifactory_zip='onedata-common-repo/common-schemachange-repo-'$jfrog_version'.0.zip'
+        elif [[ ${{ env.checkout-branch}} == 'develop' ]]; then
+          echo 'develop'
+          jfrog_artifactory_zip='onedata-common-repo-test/common-schemachange-repo-'$jfrog_version'.0.zip'
+        fi
+        jfrog_artifactory='one-data/'$jfrog_artifactory_zip
+        echo "jfrog_artifactory_nm=$jfrog_artifactory" >> $GITHUB_OUTPUT
+        echo "jfrog_artifactory_zip=$jfrog_artifactory_zip" >> $GITHUB_OUTPUT
+
+        rm -R common-repo-clone 
+
+outputs:
+  jfrog-modules-artifactory-name:
+    description: "The whole jfrog artifactory location including the artifactory repo created for one-data"
+    value: ${{ steps.common-content-generator.outputs.jfrog_artifactory_nm }}
+  
+  jfrog-modules-artifactory-zip:
+    description: "The whole jfrog artifactory location excluding the artifactory repo created for one-data"
+    value: ${{ steps.common-content-generator.outputs.jfrog_artifactory_zip }}
+  

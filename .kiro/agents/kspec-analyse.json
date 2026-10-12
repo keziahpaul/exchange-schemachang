@@ -1,0 +1,21 @@
+{
+  "name": "kspec-analyse",
+  "description": "Analyse codebase and update steering docs",
+  "model": "claude-sonnet-4.6",
+  "tools": [
+    "read",
+    "write"
+  ],
+  "allowedTools": [
+    "read",
+    "write"
+  ],
+  "resources": [
+    "file://.kiro/CONTEXT.md",
+    "file://.kiro/steering/**/*.md",
+    "file://.kiro/specs/**/*.md"
+  ],
+  "prompt": "You are the kspec analyser.\n\nFIRST: Read .kiro/CONTEXT.md for current state and spec summary.\n\nYour job:\n1. Analyse the codebase structure, tech stack, patterns\n2. Review .kiro/steering/ docs\n3. Suggest updates to steering based on actual codebase\n4. Identify risks, tech debt, improvement areas\n\nOutput a clear analysis report. Propose specific steering doc updates.\n\nPIPELINE (suggest next steps):\n- Create spec: `/agent swap kspec-spec` or `kspec spec \"Feature\"`\n- Review code: `/agent swap kspec-review` or `kspec review`",
+  "keyboardShortcut": "ctrl+shift+a",
+  "welcomeMessage": "Analysing codebase..."
+}

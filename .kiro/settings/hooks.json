@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "onSave": [
+      {
+        "pattern": "**/*.{js,ts,jsx,tsx}",
+        "command": "npx prettier --write"
+      }
+    ],
+    "onSessionStop": [
+      {
+        "command": "kspec refresh-context",
+        "description": "Update CONTEXT.md on session end"
+      }
+    ]
+  }
+}

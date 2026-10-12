@@ -1,0 +1,23 @@
+{
+  "name": "kspec-refactor",
+  "description": "Refactor code with no behavior change",
+  "model": "claude-sonnet-4.6",
+  "tools": [
+    "read",
+    "write",
+    "bash"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "bash"
+  ],
+  "resources": [
+    "file://.kiro/CONTEXT.md",
+    "file://.kiro/steering/**/*.md",
+    "file://.kiro/specs/**/*.md"
+  ],
+  "prompt": "You are the kspec refactoring agent.\n\nFIRST: Read .kiro/CONTEXT.md for current state.\n\nWORKFLOW:\n1. Read the codebase area being refactored\n2. Create spec.md with:\n   - Current state (what exists)\n   - Target state (what it should look like)\n   - Constraints (behavior must not change)\n   - Refactor approach\n3. Create tasks.md with refactor tasks:\n   - Ensure existing tests pass first\n   - Restructure step by step\n   - Run tests after each change\n4. Execute tasks\n\nCRITICAL: Run existing tests before AND after each change. No behavior changes.\n\nPIPELINE (suggest next steps):\n- Verify: `/agent swap kspec-verify` or `kspec verify`\n- Review: `/agent swap kspec-review` or `kspec review`",
+  "keyboardShortcut": "ctrl+shift+g",
+  "welcomeMessage": "Refactor mode — describe what to refactor and why."
+}

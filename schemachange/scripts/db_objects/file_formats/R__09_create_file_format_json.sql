@@ -1,0 +1,7 @@
+CREATE FILE FORMAT IF NOT EXISTS {{in_sf_env}}_EXCHANGE_RAW.API_LOGS.{{in_sf_env}}_json_format
+TYPE = JSON 
+COMPRESSION = GZIP ;
+
+CREATE FILE FORMAT IF NOT EXISTS {{in_sf_env}}_EXCHANGE_RAW.PEXAKEY.{{in_sf_env}}_json_format
+TYPE = JSON 
+COMPRESSION = GZIP ;

@@ -1,0 +1,22 @@
+config-version: 1
+
+root-folder: schemachange
+modules_folder: schemachange/modules
+
+vars:
+  in_sf_env: {{env_var('SF_ENV', 'tst')}}
+  in_s3_bucket: {{env_var('AWS_S3_BUCKET','s3://pexa-tst-coreegress-s02-store')}}
+  in_pexakey_s3_bucket: {{env_var('PEXAKEY_AWS_S3_BUCKET','s3://onedata-pexakey-042775015153-tst')}}
+  in_sf_external_id: {{env_var('SF_EXTERNAL_ID','QN78122_SFCRole=')}}
+  in_role_arn: {{env_var('AWS_ROLE_ARN','arn:aws:iam::526552200036:role/dev-onedata-snowflake-coreegress-role')}}
+  in_exchange_s3_bucket: {{env_var('AWS_S3_BUCKET','s3://onedata-exchange-526552200036-dev/rds-dms-extract/pexa')}}
+  in_projects_s3_bucket: {{env_var('AWS_S3_BUCKET','s3://onedata-projects-570723136177-tst/rds-dms-extract/public')}}
+  in_projects_role_arn: {{env_var('AWS_PROJECTS_ROLE_ARN','arn:aws:iam::570723136177:role/tst-onedata-snowflake-digitalegress-role')}}
+  in_archived_s3_bucket: {{env_var('ARCHIVED_S3_BUCKET','s3://prf02-exchange-archive-data')}}
+
+
+snowflake-account: qn78122.ap-southeast-2
+snowflake-role: TST_GITHUB_INTEGRATION_ROLE_S
+snowflake-user: TST_GITHUB_INTEGRATION_USER
+snowflake-warehouse: TST_ADMIN_XS_WH
+snowflake-database: TST_METADATA

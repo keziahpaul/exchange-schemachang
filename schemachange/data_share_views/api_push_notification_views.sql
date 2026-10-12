@@ -1,0 +1,9 @@
+{% set api_push_notification_views_list = [
+    "VW_OUTBOUND_NOTIFICATION",
+    "VW_REGISTRATION",
+    "VW_WEBHOOK_REGISTRATION",
+    "VW_OUTBOUND_NOTIFICATION_HIST",
+    "VW_REGISTRATION_HIST",
+    "VW_WEBHOOK_REGISTRATION_HIST"
+
+] %}

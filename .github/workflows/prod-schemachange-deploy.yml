@@ -1,0 +1,178 @@
+name: Pre-Prod and Prod Schemachange Deploy
+on:
+  pull_request:
+    branches:
+      - main
+    
+permissions:
+  id-token: write
+  contents: write
+
+env: 
+  # PST_ENV: "prd" #check environment name
+  ECR_REPOSITORY: pexa-one-data-snowflake-au-common-lib
+  IMAGE: 004761221582.dkr.ecr.ap-southeast-2.amazonaws.com/pexa-one-data-snowflake-au-common-lib:latest_prod
+
+
+jobs:
+  set_env_variable:
+    name: Set environment variable as outputs
+    runs-on: [prod, deploy]
+    outputs:
+      image: ${{ steps.setEnvVariable.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set variable as output
+        id: setEnvVariable
+        run: | 
+          echo "image=${{ env.IMAGE }}" >> $GITHUB_OUTPUT
+  
+  get-jfrog-module-latest-file-name:
+    needs: [set_env_variable]
+    name: Get Common contents from snowflake common repo
+    runs-on: [non-prod,deploy]
+    outputs:
+      jfrog-modules-artifactory-name: ${{ steps.get-ref-common-repo.outputs.jfrog-modules-artifactory-name }}
+      jfrog-modules-artifactory-zip: ${{ steps.get-ref-common-repo.outputs.jfrog-modules-artifactory-zip }}
+    steps:
+      
+      - name: Checkout actions
+        uses: actions/checkout@v7
+      
+      - name: Git clone
+        id: get-ref-common-repo
+        uses: ./.github/actions/get-common-module/
+        with:
+          checkout-branch: main
+
+  pst-schemachange-deploy:
+    name: PST schemachange-Deploy
+    if: (startsWith(github.event.pull_request.head.ref, 'release/') || startsWith(github.event.pull_request.head.ref, 'hotfix/'))
+    runs-on: [prod, deploy] #check environment name
+    needs: [set_env_variable,get-jfrog-module-latest-file-name]
+    environment: pst
+    container:
+      image: ${{ needs.set_env_variable.outputs.image }}
+    env:
+      GITHUB_ACTIONS_ID: ${{ github.run_id }}
+      TARGET_ENV: pst
+      SNOWFLAKE_PRIVATE_KEY_PATH: github_integration_user_private_key.p8
+      jfrog-modules-artifactory-name: ${{ needs.get-jfrog-module-latest-file-name.outputs.jfrog-modules-artifactory-name}}
+      jfrog-modules-artifactory-zip: ${{ needs.get-jfrog-module-latest-file-name.outputs.jfrog-modules-artifactory-zip}}
+
+    steps:
+      - name: Assume Role
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: ap-southeast-2
+          role-to-assume: arn:aws:iam::725563543552:role/GitHubRunnerPEXAOneDataRole
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Fetch Snowflake pre-prod Creds
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            SNOWFLAKE_PRIVATE_KEY,onedata_pre-prod_pst_exchange_snowflake-github-user-private-key
+            SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,onedata_pre-prod_pst_exchange_snowflake-github-user-passphrase
+            
+      
+      - name: Set up JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4.10.1
+        env:
+          JF_URL: "https://pexaartifacts.jfrog.io/"
+          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+
+
+      - name: Download Schemachange common modules from jfrog
+        run: |
+          jfrog rt ping
+          jf rt download ${{ env.jfrog-modules-artifactory-name }} --include-dirs
+          ls
+
+      - name: relocate-common
+        run: |
+          unzip ${{ env.jfrog-modules-artifactory-zip }} -d downloads
+          cp -r downloads/schemachange/modules schemachange
+          ls schemachange/*
+          rm -r downloads
+            
+      - name: PST Dry Run
+        run: |
+          echo '${{ env.SNOWFLAKE_PRIVATE_KEY }}' >> github_integration_user_private_key.p8
+          chmod 600 github_integration_user_private_key.p8
+          make common_dry_run SF_ENV="pst"
+
+      - name: PST Deploy
+        run: |
+          make common_deploy SF_ENV="pst"
+
+
+
+  prd-schemachange-deploy:
+    name: PRD-schemachange-Deploy
+    if: (startsWith(github.event.pull_request.head.ref, 'release/') || startsWith(github.event.pull_request.head.ref, 'hotfix/'))
+    runs-on: [prod, deploy]
+    needs: [set_env_variable,pst-schemachange-deploy,get-jfrog-module-latest-file-name]
+    environment: prd #check prod name
+    container:
+      image: ${{ needs.set_env_variable.outputs.image }}
+    env:
+      GITHUB_ACTIONS_ID: ${{ github.run_id }}
+      TARGET_ENV: prd
+      SNOWFLAKE_PRIVATE_KEY_PATH: github_integration_user_private_key.p8
+      jfrog-modules-artifactory-name: ${{ needs.get-jfrog-module-latest-file-name.outputs.jfrog-modules-artifactory-name}}
+      jfrog-modules-artifactory-zip: ${{ needs.get-jfrog-module-latest-file-name.outputs.jfrog-modules-artifactory-zip}}
+    steps:
+      - name: Assume Role
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-region: ap-southeast-2
+          role-to-assume: arn:aws:iam::725563543552:role/GitHubRunnerPEXAOneDataRole
+          role-duration-seconds: 3600
+          role-skip-session-tagging: true
+
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Fetch Snowflake prod Creds
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
+        with:
+          secret-ids: |
+            SNOWFLAKE_PRIVATE_KEY_PASSPHRASE,onedata_prod_prd_exchange_snowflake-github-user-passphrase
+            SNOWFLAKE_PRIVATE_KEY,onedata_prod_prd_exchange_snowflake-github-user-private-key
+      
+      - name: Set up JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4.10.1
+        env:
+          JF_URL: "https://pexaartifacts.jfrog.io/"
+          JF_ACCESS_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+
+
+      - name: Download Schemachange common modules from jfrog
+        run: |
+          jfrog rt ping
+          jf rt download ${{ env.jfrog-modules-artifactory-name }} --include-dirs
+          ls
+
+      - name: relocate-common
+        run: |
+          unzip ${{ env.jfrog-modules-artifactory-zip }} -d downloads
+          cp -r downloads/schemachange/modules schemachange
+          ls schemachange/*
+          rm -r downloads
+     
+      - name: PRD Dry Run
+        run: |
+          echo '${{ env.SNOWFLAKE_PRIVATE_KEY }}' >> github_integration_user_private_key.p8
+          chmod 600 github_integration_user_private_key.p8
+          make common_dry_run SF_ENV="prd"
+
+      #added space
+      - name: PRD Deploy
+        if: ${{ vars.DEPLOY_SCHEMA_CHANGE_FLAG == 'TRUE' }}
+        run: |
+          make common_deploy SF_ENV="prd"

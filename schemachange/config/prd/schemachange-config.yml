@@ -1,0 +1,22 @@
+config-version: 1
+
+root-folder: schemachange
+modules_folder: schemachange/modules
+
+vars:
+  in_sf_env: {{env_var('SF_ENV', 'prd')}}
+  in_s3_bucket: {{env_var('AWS_S3_BUCKET','s3://pexa-prd-coreegress-store')}}
+  in_pexakey_s3_bucket: {{env_var('PEXAKEY_AWS_S3_BUCKET','s3://onedata-pexakey-725563543552-prd')}}
+  in_sf_external_id: {{env_var('SF_EXTERNAL_ID','ZZ82647_SFCRole=')}}
+  in_role_arn: {{env_var('AWS_ROLE_ARN','arn:aws:iam::215597176832:role/prd-onedata-snowflake-coreegress-role')}}
+  in_exchange_s3_bucket: {{env_var('AWS_S3_BUCKET','s3://onedata-exchange-215597176832-prd/rds-dms-extract/pexa')}}
+  in_projects_s3_bucket: {{env_var('AWS_S3_BUCKET','s3://onedata-projects-597924334156-prd/rds-dms-extract/public')}}
+  in_projects_role_arn: {{env_var('AWS_PROJECTS_ROLE_ARN','arn:aws:iam::597924334156:role/prd-onedata-snowflake-digitalegress-role')}}
+  in_archived_s3_bucket: {{env_var('ARCHIVED_S3_BUCKET','s3://prd-exchange-archive-data')}}
+
+  
+snowflake-account: zz82647.ap-southeast-2
+snowflake-role: PRD_GITHUB_INTEGRATION_ROLE_S
+snowflake-user: PRD_GITHUB_INTEGRATION_USER
+snowflake-warehouse: PRD_ADMIN_XS_WH
+snowflake-database: PRD_METADATA

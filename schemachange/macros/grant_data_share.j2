@@ -1,0 +1,7 @@
+{% macro grant_data_share(list_of_views, ds_database, schema_name, share_name) %}
+    {% for view in list_of_views %}
+        grant select on  {{ds_database}}.{{schema_name}}.{{view}} to database role {{ds_database}}.PI_MASKED_DATASHARE_DBROLE;
+        grant select on  {{ds_database}}.{{schema_name}}.{{view}} to database role {{ds_database}}.PI_PUBLIC_DATASHARE_DBROLE;
+        grant select on  {{ds_database}}.{{schema_name}}.{{view}} to share {{share_name}};
+    {% endfor %}
+{% endmacro %}
